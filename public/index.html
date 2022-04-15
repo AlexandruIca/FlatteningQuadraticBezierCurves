@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Convertirea curbelor Bézier la linii</title>
+
+  <meta name="description" content="O metodă mai eficientă decât cea De Casteljau, și care rezultă în mai puține segmente generate în majoritatea cazurilor">
+  <meta property="og:title" content="Convertirea curbelor Bézier la linii">
+  <meta property="og:description" content="O metodă mai eficientă decât cea De Casteljau, și care rezultă în mai puține segmente generate în majoritatea cazurilor">
+  <meta property="og:type" content="website">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet"> 
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+      :root {
+          font-family: 'Roboto', sans-serif;
+          font-size: 18px;
+      }
+
+      body {
+          display: flex;
+          flex-flow: column nowrap;
+          justify-content: center;
+          align-items: center;
+      }
+
+      nav {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+      }
+
+      article {
+          width: clamp(45ch, 50%, 75ch);
+      }
+
+      a:link, a:active {
+          color: #00BFFF;
+      }
+      a:visited {
+          color: #1E90FF;
+      }
+      a:hover {
+          color: #11CCCC;
+      }
+
+      svg .quad {
+          stroke-width: 6px;
+          stroke: #F4A460;
+      }
+
+      svg .polyline {
+          stroke: #000;
+      }
+
+      svg .handle {
+          pointer-events: all;
+      }
+
+      svg #grid line {
+          stroke: #CCC;
+      }
+
+      svg .hull {
+          stroke: #191970;
+      }
+  </style>
+</head>
+
+<body>
+    <nav>
+        <h1>
+            Convertirea curbelor Bézier de ordin 2 la linii
+        </h1>
+    </nav>
+
+    <article>
+    <p>
+        Convertirea curbelor Bézier la linii poate fi utilă pentru desenarea lor întrucât plăcile video nu pot lucra direct cu ele. Chiar dacă nu folosim neapărat
+        placa video, a lucra cu linii este mai ușor decât a lucra direct cu curbe Bézier. În mod tradițional curbele Bézier se pot converti la linii folosindu-ne
+        de schema <a href="https://en.wikipedia.org/wiki/De_Casteljau%27s_algorithm">De Casteljau</a>. Algoritmul, conceptual (descris mai în detaliu
+        <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.86.162&rep=rep1&type=pdf">aici</a>), este:
+
+        <pre><code>
+convertește :: Curbă -> [Linie]
+convertește c =
+  if esteSuficientDePlată c
+    then [c]
+    else -- împărțim curba la jumătate în alte 2 curbe Bézier
+      let
+        (stânga, dreapta) = împarte c
+      in
+        convertește stânga ++ convertește dreapta
+        </code></pre>
+
+        Acest algoritm are câteva dezavantaje:
+        <ul>
+            <li>Nu știm câte segmente se vor genera dinainte</li>
+            <li>Algoritmul este recursiv (în general plăcile video nu suportă funcții recursive)</li>
+            <li>Se pot genera mai multe segmente decât este nevoie</li>
+        </ul>
+
+        Pentru a combate aceste probleme, Raph Levien <a href="https://raphlinus.github.io/graphics/curves/2019/12/23/flatten-quadbez.html">propune</a> o metodă
+        simplă prin care se poate calcula numărul de segmente necesare. Metoda pornește de la proprietatea curbelor Bézier care spune că orice curbă Bézier se
+        poate reprezenta cu parabola \(y = x^2\) (modulo rotație, scalare și translație).
+    </p>
+
+    <p>
+        Distanța maximă între curbă și coardă pentru o parabolă \(y = x^2\) este aproximativ \(\frac{1}{8} \kappa \Delta s^2\), unde \(\kappa\) reprezintă curbura
+        iar \(\Delta s\) reprezintă o distanță ce tinde spre 0 (luăm în considerare o coardă cât mai mică). Pentru parabolă avem formule relativ simple:
+
+        \[ \kappa = \frac{f''(x)}{\left(1 + f'(x)^2\right)^{\frac{3}{2}}} = \frac{2}{\left(1 + 4x^2\right)^{\frac{3}{2}}} \]
+        \[ \Delta s = \sqrt{1 + \left(\frac{dy}{dx}\right)^2} dx = \sqrt{1 + 4x^2} \Delta x \]
+
+        Înlocuind acestea în formula de mai sus putem scoate pe \(\Delta x\):
+
+        \[ \Delta x = 2 \sqrt{\Delta y} \sqrt[4]{1 + 4x^2} \]
+
+        Care reprezintă „pasul” pentru fiecare linie. Numărul de segmente este inversul acestei expresii:
+
+        \[ f(x) = nr. segmente = \frac{1}{2 \sqrt{\Delta y}} \int\limits_{x_0}^{x_1} \frac{1}{\sqrt[4]{1 + 4x^2}} dx \]
+
+        Pentru a calcula parametrul \(t\) pentru fiecare nouă linie generată va trebui să calculăm inversa acestei funcții. Vom folosi niște aproximări pentru
+        a le calcula:
+
+        \[ f(x) \approx \frac{x}{0.33 + \sqrt[4]{0.67^4 + \frac{1}{4} x^2}} \]
+        \[ f^{-1}(x) \approx x \left( 0.61 + \sqrt{0.39^2 + \frac{1}{4} x^2} \right) \]
+    </p>
+
+    <p>
+        Mai jos am creat un demo interactiv (similar cu articolul original) în care se poate vedea numărul de segmente generat pentru diverse forme ale curbei
+        Bézier. Metoda aleasă predefinit este cea propusă de Raph Levien ('a'), dar dacă se apasă tasta 'r' se vor genera segmente folosind metoda De Casteljau.
+    </p>
+    </article>
+
+    <article>
+    <svg id="improved_method_showcase" xmlns="http://www.w3.org/2000/svg" width="700" height="500" viewBox="0 0 700 500">
+        <g id="grid"></g>
+        <rect x="0" y="0" width="700" height="500" stroke="#777" stroke-width="4" fill="none"/>
+    </svg>
+
+    <div>
+        <p>
+        Metoda folosită: <span id="method_used">aproximarea la parabolă</span>,
+        Numărul de segmente generate: <span id="number_of_segments_generated"></span>
+        </p>
+    </div>
+    </article>
+
+    <script>
+        const svgNS = "http://www.w3.org/2000/svg";
+
+        const constants = {
+            width: 700,
+            height: 500,
+            handle_radius: 5,
+            grid_size: 20,
+            thresh: 1.0,
+        };
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        class Point {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+
+            lerp(p2, t) {
+                return new Point(this.x + (p2.x - this.x) * t, this.y + (p2.y - this.y) * t);
+            }
+
+            dist(p2) {
+                return Math.hypot(p2.x - this.x, p2.y - this.y);
+            }
+        }
+
+        function approx_integral(x) {
+            const d = 0.67;
+            return x / (1 - d + Math.pow(Math.pow(d, 4) + 0.25 * x * x, 0.25));
+        }
+
+        function approx_inverse_integral(x) {
+            const b = 0.39;
+
+            return x * (1 - b + Math.sqrt(b * b + 0.25 * x * x));
+        }
+
+        class QuadBez {
+            constructor(x0, y0, x1, y1, x2, y2) {
+                this.x0 = x0;
+                this.x1 = x1;
+                this.x2 = x2;
+
+                this.y0 = y0;
+                this.y1 = y1;
+                this.y2 = y2;
+            }
+
+            to_svg_path() {
+                return `M ${this.x0} ${this.y0} Q ${this.x1} ${this.y1} ${this.x2} ${this.y2}`;
+            }
+
+            eval(t) {
+                const mt = 1 - t;
+                const x = this.x0 * mt * mt + 2 * this.x1 * t * mt + this.x2 * t * t;
+                const y = this.y0 * mt * mt + 2 * this.y1 * t * mt + this.y2 * t * t;
+
+                return new Point(x, y);
+            }
+
+            subsegment(t0, t1) {
+                const p0 = this.eval(t0);
+                const p2 = this.eval(t1);
+                const dt = t1 - t0;
+                const p1x = p0.x + (this.x1 - this.x0 + t0 * (this.x2 - 2 * this.x1 + this.x0)) * dt;
+                const p1y = p0.y + (this.y1 - this.y0 + t0 * (this.y2 - 2 * this.y1 + this.y0)) * dt;
+
+                return new QuadBez(p0.x, p0.y, p1x, p1y, p2.x, p2.y);
+            }
+
+            error() {
+                const x1 = this.x1 - this.x0;
+                const y1 = this.y1 - this.y0;
+                const x2 = this.x2 - this.x0;
+                const y2 = this.y2 - this.y0;
+                const t = (x1 * x2 + y1 * y2) / (x2 * x2 + y2 * y2);
+                const u = clamp(t, 0, 1);
+                const p = new Point(this.x0, this.y0).lerp(new Point(this.x2, this.y2), u);
+                return 0.5 * p.dist(new Point(this.x1, this.y1));
+            }
+
+            recursive_subdivide_impl(err, t0, t1, result) {
+                const q = this.subsegment(t0, t1);
+
+                if (q.error() <= err) {
+                    result.push(t1);
+                } else {
+                    const t_mid = (t0 + t1) * 0.5;
+                    this.recursive_subdivide_impl(err, t0, t_mid, result);
+                    this.recursive_subdivide_impl(err, t_mid, t1, result);
+                }
+            }
+
+            recursive_subdivide(err) {
+                const result = [0];
+                this.recursive_subdivide_impl(err, 0, 1, result);
+                return result;
+            }
+
+            map_to_basic() {
+                const ddx = 2 * this.x1 - this.x0 - this.x2;
+                const ddy = 2 * this.y1 - this.y0 - this.y2;
+                const u0 = (this.x1 - this.x0) * ddx + (this.y1 - this.y0) * ddy;
+                const u2 = (this.x2 - this.x1) * ddx + (this.y2 - this.y1) * ddy;
+                const cross = (this.x2 - this.x0) * ddy - (this.y2 - this.y0) * ddx;
+                const x0 = u0 / cross;
+                const x2 = u2 / cross;
+                const scale = Math.abs(cross) / (Math.hypot(ddx, ddy) * Math.abs(x2 - x0));
+                return { x0: x0, x2: x2, scale: scale, cross: cross };
+            }
+
+            smart_subdivide(err) {
+                const params = this.map_to_basic();
+                const a0 = approx_integral(params.x0);
+                const a2 = approx_integral(params.x2);
+                const count = 0.5 * Math.abs(a2 - a0) * Math.sqrt(params.scale / err);
+                const n = Math.ceil(count);
+                const u0 = approx_inverse_integral(a0);
+                const u2 = approx_inverse_integral(a2);
+                let result = [0];
+
+                for (let i = 1; i < n; ++i) {
+                    const u = approx_inverse_integral(a0 + ((a2 - a0) * i) / n);
+                    const t = (u - u0) / (u2 - u0);
+                    result.push(t);
+                }
+
+                result.push(1);
+                return result;
+            }
+        }
+
+        class DemoUI {
+            constructor(id) {
+                this.root = document.getElementById(id);
+
+                this.root.addEventListener('pointerdown', e => {
+                    this.root.setPointerCapture(e.pointerId);
+                    this.onPointerDown(e);
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+
+                this.root.addEventListener('pointermove', e => {
+                    this.onPointerMove(e);
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+
+                this.root.addEventListener('pointerup', e => {
+                    this.root.releasePointerCapture(e.pointerId);
+                    this.onPointerUp(e);
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+
+                window.addEventListener('keydown', e => this.onKeyPress(e));
+
+                this.points = [new Point(200, 450), new Point(400, 450), new Point(600, 50)];
+                this.quad = this.make_stroke();
+                this.quad.classList.add("quad");
+                this.polyline = this.make_stroke();
+                this.polyline.classList.add("polyline");
+                this.hull = this.make_stroke();
+                this.hull.classList.add('hull');
+                this.handles = this.points.map(p => this.make_handle(p));
+                this.splitting_points = [];
+                this.method = { id: 0, name: "aproximarea la parabolă" };
+                this.grid_size = constants.grid_size;
+                this.thresh = constants.thresh;
+                this.render_grid();
+                this.update();
+                this.current_obj = null;
+            }
+
+            getCoords(e) {
+                const rect = this.root.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                return new Point(x, y);
+            }
+
+            onPointerDown(e) {
+                const p = this.getCoords(e);
+                const x = p.x;
+                const y = p.y;
+
+                for (let i = 0; i < this.points.length; ++i) {
+                    if (Math.hypot(x - this.points[i].x, y - this.points[i].y) < 2 * constants.handle_radius) {
+                        this.current_obj = i;
+                    }
+                }
+            }
+
+            onPointerMove(e) {
+                const p = this.getCoords(e);
+
+                if (this.current_obj !== null) {
+                    const i = this.current_obj;
+
+                    p.x = clamp(p.x, 0, constants.width);
+                    p.y = clamp(p.y, 0, constants.height);
+
+                    this.points[i] = p;
+                    this.handles[i].setAttribute("cx", p.x)
+                    this.handles[i].setAttribute("cy", p.y)
+                    this.update();
+                }
+            }
+
+            onPointerUp(e) {
+                this.current_obj = null;
+            }
+
+            onKeyPress(e) {
+                if (e.key === 'r') {
+                    this.method = { id: 1, name: "De Casteljau" };
+                    this.update();
+                } else if (e.key === 'a') {
+                    this.method = { id: 0, name: "aproximarea la parabolă" };
+                    this.update();
+                }
+            }
+
+            plot(x, y, color = "black", r = 2) {
+                let circle = document.createElementNS(svgNS, "circle");
+
+                circle.setAttribute("cx", x);
+                circle.setAttribute("cy", y);
+                circle.setAttribute("r", r);
+                circle.setAttribute("fill", color)
+
+                this.root.appendChild(circle);
+
+                return circle;
+            }
+
+            make_handle(point) {
+                const circle = this.plot(point.x, point.y, "coral", 5);
+                circle.classList.add("handle");
+                return circle;
+            }
+
+            make_stroke() {
+                const path = document.createElementNS(svgNS, "path");
+
+                path.setAttribute("fill", "none");
+                path.setAttribute("stroke", "#191970");
+
+                this.root.appendChild(path);
+
+                return path;
+            }
+
+            render_grid() {
+                let grid = document.getElementById("grid");
+
+                let w = constants.width;
+                let h = constants.height;
+
+                for (let i = 0; i < w; i += this.grid_size) {
+                    let line = document.createElementNS(svgNS, "line");
+
+                    line.setAttribute("x1", i);
+                    line.setAttribute("y1", 0);
+                    line.setAttribute("x2", i);
+                    line.setAttribute("y2", h);
+
+                    grid.appendChild(line);
+                }
+                for (let i = 0; i < h; i += this.grid_size) {
+                    let line = document.createElementNS(svgNS, "line");
+
+                    line.setAttribute("x1", 0);
+                    line.setAttribute("y1", i);
+                    line.setAttribute("x2", w);
+                    line.setAttribute("y2", i);
+
+                    grid.appendChild(line);
+                }
+            }
+
+            update() {
+                for (let p of this.splitting_points) {
+                    p.remove();
+                }
+                this.splitting_points = [];
+
+                const [p0, p1, p2] = this.points;
+                const quadratic = new QuadBez(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
+                const h = `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+
+                this.quad.setAttribute("d", quadratic.to_svg_path());
+                this.hull.setAttribute("d", h);
+
+                let choice = [
+                    curve => curve.smart_subdivide(this.thresh),
+                    curve => curve.recursive_subdivide(this.thresh),
+                ];
+
+                let subdivision = choice[this.method.id](quadratic);
+                const n = subdivision.length - 1;
+                let p = "";
+
+                for (let t of subdivision) {
+                    const xy = quadratic.eval(t);
+                    this.splitting_points.push(this.plot(xy.x, xy.y));
+
+                    if (p == "") {
+                        p = `M ${xy.x} ${xy.y}`;
+                    } else {
+                        p += `L ${xy.x} ${xy.y}`;
+                    }
+                }
+
+                this.polyline.setAttribute("d", p);
+                document.getElementById('number_of_segments_generated').innerText = `${this.splitting_points.length - 1}`;
+                document.getElementById('method_used').innerText = `${this.method.name}`;
+            }
+        }
+
+        new DemoUI('improved_method_showcase');
+    </script>
+</body>
+</html>
