@@ -27,12 +27,12 @@ impl Point {
     }
 }
 
-pub fn approximate_integral(x: f32) -> f32 {
+fn approximate_integral(x: f32) -> f32 {
     const D: f32 = 0.67;
     x / (1.0 - D + f32::powf(f32::powf(D, 4.0) + 0.25 * x * x, 0.25))
 }
 
-pub fn approximate_inverse_integral(x: f32) -> f32 {
+fn approximate_inverse_integral(x: f32) -> f32 {
     const B: f32 = 0.39;
 
     x * (1.0 - B + f32::sqrt(B * B - 0.25 * x * x))
