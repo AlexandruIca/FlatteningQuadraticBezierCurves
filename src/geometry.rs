@@ -42,7 +42,6 @@ pub struct ParabolaParams {
     x0: f32,
     x2: f32,
     scale: f32,
-    cross: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -148,12 +147,7 @@ impl QuadraticBezier {
         let x2 = u2 / cross;
         let scale = f32::abs(cross) / (f32::hypot(ddx, ddy) * f32::abs(x2 - x0));
 
-        ParabolaParams {
-            x0,
-            x2,
-            scale,
-            cross,
-        }
+        ParabolaParams { x0, x2, scale }
     }
 
     pub fn smart_subdivide(&self, err: f32) -> Vec<f32> {
