@@ -45,6 +45,7 @@ pub struct ParabolaParams {
     cross: f32,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct QuadraticBezier {
     x0: f32,
     y0: f32,
