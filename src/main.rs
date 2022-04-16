@@ -1,8 +1,10 @@
+mod color;
 mod geometry;
 mod rasterizer;
 
+use color::Color;
 use geometry::{Point, QuadraticBezier};
-use rasterizer::{f32_to_u8, Color, Rasterizer, SubdivisionMethod};
+use rasterizer::{f32_to_u8, Rasterizer, SubdivisionMethod};
 use ttf_parser as ttf;
 
 #[derive(Debug, Clone, Copy)]
