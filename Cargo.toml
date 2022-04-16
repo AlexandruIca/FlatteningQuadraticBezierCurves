@@ -1,5 +1,5 @@
 [package]
-name = "FlatteningQuadraticBézierCurves"
+name = "flattening_quadratic_bezier_curves"
 version = "0.1.0"
 edition = "2021"
 
