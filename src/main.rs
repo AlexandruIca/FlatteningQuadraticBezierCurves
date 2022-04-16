@@ -16,5 +16,5 @@ fn main() {
         .map(|t| quadratic.eval(*t))
         .collect::<Vec<Point>>();
 
-    println!("{} line segments: {:?}", lines.len(), lines);
+    println!("{} line segments:\n{:?}", lines.len(), lines);
 }
