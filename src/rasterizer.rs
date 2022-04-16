@@ -29,6 +29,24 @@ impl Color {
             a: 1.0,
         }
     }
+
+    pub fn yellow_green() -> Self {
+        Self {
+            r: 154.0 / 256.0,
+            g: 205.0 / 256.0,
+            b: 50.0 / 256.0,
+            a: 1.0,
+        }
+    }
+
+    pub fn steel_blue() -> Self {
+        Self {
+            r: 70.0 / 256.0,
+            g: 130.0 / 256.0,
+            b: 180.0 / 256.0,
+            a: 1.0,
+        }
+    }
 }
 
 // https://stackoverflow.com/a/56842762/8622014
