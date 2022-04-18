@@ -185,6 +185,14 @@ convertește c =
     <p>
         După cum se poate observa diferențele sunt practic invizibile, dar metoda propusă folosește mai puține linii și este _mult_ mai eficientă în practică.
     </p>
+    <p>
+        Font-urile folosite în demo sunt: <a href="https://fonts.google.com/specimen/Roboto">Roboto</a> și <a href="https://fontmeme.com/fonts/wildwood-font/">Wildwood</a>.
+        Implementarea pentru algoritm în sine se poate vedea în sursa acestui site sau în implementarea renderer-ului <a href="https://github.com/AlexandruIca/FlatteningQuadraticBezierCurves/blob/master/src/geometry.rs#L140">aici</a>.
+        Tot codul se găsește <a href="https://github.com/AlexandruIca/FlatteningQuadraticBezierCurves/tree/master/src">aici</a>. În <a href="https://github.com/AlexandruIca/FlatteningQuadraticBezierCurves/blob/master/src/font.rs">font.rs</a>
+        se găsește codul folosit pentru a citi datele din font-uri TrueType folosind <a href="https://crates.io/crates/ttf-parser">ttf-parser</a>. În <a href="https://github.com/AlexandruIca/FlatteningQuadraticBezierCurves/blob/master/src/rasterizer.rs">rasterizer.rs</a> se găsește
+        implementarea pentru rasterizer bazat pe ideea prezentată <a href="https://medium.com/@raphlinus/inside-the-fastest-font-renderer-in-the-world-75ae5270c445">aici</a>. În <a href="https://github.com/AlexandruIca/FlatteningQuadraticBezierCurves/blob/master/src/main.rs">main.rs</a> sunt descrise testele, iar în
+        <a href="https://github.com/AlexandruIca/FlatteningQuadraticBezierCurves/blob/master/README.md">README</a> sunt puse instrucțiuni pentru reproducerea rezultatelor.
+    </p>
     </article>
 
     <script>
